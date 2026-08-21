@@ -1,0 +1,18 @@
+name: worldtime
+
+services:
+  worldtime:
+    container_name: worldtime
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT:-18080}:80"
+    restart: unless-stopped
+    networks:                                                                                                                                                                                                                                     
+      - default
+      - cloudflare_gateway
+
+networks:
+  cloudflare_gateway:
+    external: true

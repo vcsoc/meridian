@@ -1,0 +1,39 @@
+{
+  "name": "world-time-atlas",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "generate:cities": "node scripts/generate-cities.cjs"
+  },
+  "dependencies": {
+    "@types/leaflet": "^1.9.21",
+    "@vitejs/plugin-react": "latest",
+    "leaflet": "^1.9.4",
+    "lucide-react": "latest",
+    "maplibre-gl": "^5.24.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-leaflet": "^5.0.0",
+    "three": "latest",
+    "tz-lookup": "^6.1.25",
+    "vite": "latest",
+    "world-cities-json": "^1.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/three": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "globals": "latest",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "latest"
+  }
+}

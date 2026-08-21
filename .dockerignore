@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.gitignore
+*.log
+.vite-*
+Dockerfile*
+compose*.yml
+compose*.yaml
+README.md
