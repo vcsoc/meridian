@@ -2,6 +2,8 @@
 
 Meridian is an interactive world-time and trip-planning atlas. It combines satellite, map, and street views with live local times, time-zone comparisons, location search, saved places, and approximate travel estimates.
 
+**Demo:** <https://vcsoc.github.io/meridian/>
+
 ![Meridian World Time Atlas showing Europe and the North Atlantic](docs/meridian-world-time-atlas.png)
 
 ## Features

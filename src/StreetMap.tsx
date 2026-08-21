@@ -30,7 +30,7 @@ function MapSelection({ onSelect, onContextLocation, onExitDetail, detailMode }:
   return null
 }
 
-const selectedIcon=icon({iconUrl:'/assets/map-marker.svg?v=2',iconSize:[20,27],iconAnchor:[10,26],popupAnchor:[0,-25]})
+const selectedIcon=icon({iconUrl:`${import.meta.env.BASE_URL}assets/map-marker.svg?v=2`,iconSize:[20,27],iconAnchor:[10,26],popupAnchor:[0,-25]})
 
 const meridians: LatLngExpression[][] = Array.from({ length: 24 }, (_, index) => {
   const lng = -180 + index * 15

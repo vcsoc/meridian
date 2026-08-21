@@ -18,9 +18,9 @@ export default function Globe({selected,compare,brightness,viewMode,onSelect,onN
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(host.clientWidth,host.clientHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;host.appendChild(renderer.domElement)
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.045;controls.minDistance=2.025;controls.maxDistance=9;controls.zoomSpeed=.72;controls.zoomToCursor=true;controls.enablePan=false;controls.autoRotate=true;controls.autoRotateSpeed=.22
   scene.add(new THREE.AmbientLight(0x9bb2bd,1.35));const sun=new THREE.DirectionalLight(0xfff4dd,3.1);sun.position.set(-4,3,5);scene.add(sun)
-  const satellite=new THREE.TextureLoader().load('/assets/earth-satellite.jpg',loaded=>{loaded.colorSpace=THREE.SRGBColorSpace;loaded.anisotropy=renderer.capabilities.getMaxAnisotropy();loaded.minFilter=THREE.LinearMipmapLinearFilter;loaded.magFilter=THREE.LinearFilter;loaded.generateMipmaps=true;loaded.needsUpdate=true})
+  const satellite=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/earth-satellite.jpg`,loaded=>{loaded.colorSpace=THREE.SRGBColorSpace;loaded.anisotropy=renderer.capabilities.getMaxAnisotropy();loaded.minFilter=THREE.LinearMipmapLinearFilter;loaded.magFilter=THREE.LinearFilter;loaded.generateMipmaps=true;loaded.needsUpdate=true})
   satellite.colorSpace=THREE.SRGBColorSpace
-  const specular=new THREE.TextureLoader().load('/assets/earth-specular.jpg');specular.anisotropy=renderer.capabilities.getMaxAnisotropy()
+  const specular=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/earth-specular.jpg`);specular.anisotropy=renderer.capabilities.getMaxAnisotropy()
   const material=new THREE.MeshPhongMaterial({map:satellite,specularMap:specular,specular:0x6f8791,shininess:12})
   const globe=new THREE.Mesh(new THREE.SphereGeometry(2,128,128),material);scene.add(globe)
   const atmosphere=new THREE.Mesh(new THREE.SphereGeometry(2.045,96,96),new THREE.MeshBasicMaterial({color:0x78b8b2,transparent:true,opacity:.07,side:THREE.BackSide}));atmosphere.scale.setScalar(1.08);scene.add(atmosphere)
@@ -32,7 +32,7 @@ export default function Globe({selected,compare,brightness,viewMode,onSelect,onN
   const markers=new THREE.Group();scene.add(markers)
   const hoverMarkers=new THREE.Group();scene.add(hoverMarkers)
   const hoverGeometry=new THREE.SphereGeometry(.006,8,8);nearbyColors.forEach(color=>{const dot=new THREE.Mesh(hoverGeometry,new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95}));dot.visible=false;hoverMarkers.add(dot)})
-  const markerTexture=new THREE.TextureLoader().load('/assets/map-marker.svg?v=2')
+  const markerTexture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/map-marker.svg?v=2`)
   state.current={camera,controls,markers,renderer,material,satellite,specular,markerTexture}
   renderer.domElement.title='Drag to rotate · Scroll to zoom · Click to select the nearest city'
   let id=0,lastFrame=0;const animate=(now=0)=>{id=requestAnimationFrame(animate);if(now-lastFrame<22)return;lastFrame=now;const distance=camera.position.length();const zoomRatio=THREE.MathUtils.clamp((distance-controls.minDistance)/(controls.maxDistance-controls.minDistance),0,1);controls.rotateSpeed=.08+zoomRatio*.52;controls.autoRotateSpeed=.06+zoomRatio*.16;const hoverScale=THREE.MathUtils.clamp(distance/7.2,.3,1);hoverMarkers.children.forEach(marker=>marker.scale.setScalar(hoverScale));const markerScale=THREE.MathUtils.clamp(Math.pow(distance/7.2,1.6),.12,1);markers.children.forEach(marker=>{if(marker instanceof THREE.Sprite){marker.scale.set(.095*markerScale,.128*markerScale,1)}});controls.update();renderer.render(scene,camera)};animate()
