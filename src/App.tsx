@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Bike, BusFront, Car, ChevronDown, ChevronsLeft, Clock3, Footprints, Globe2, House, Layers3, Map as MapIcon, MapPin, Moon, Pencil, Navigation, Plane, Plus, Route, Search, Settings2, Star, Sun, Tag, X } from 'lucide-react'
 import WorldMap from './WorldMap'
+import { exportFavorites, importFavorites } from './favorites'
 import { cities, cityDate, cityTime, countries, flag, utcOffset, type City } from './data'
 import { lookupAddress, type AddressSuggestion } from './geocoding'
 import './styles.css'
@@ -46,12 +47,33 @@ export default function App(){
  const [query,setQuery]=useState('');const [addressSuggestions,setAddressSuggestions]=useState<AddressSuggestion[]>([]);const [lookupOpen,setLookupOpen]=useState(false);const [lookupLoading,setLookupLoading]=useState(false);const [brightness,setBrightness]=useState(100);const [,setZoom]=useState(.16)
  const [viewMode,setViewMode]=useState<'satellite'|'map'|'street'>('satellite');const [showCities,setShowCities]=useState(false);const [showZones,setShowZones]=useState(true);const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
  const [tab,setTab]=useState<'places'|'favorites'|'zones'>('places');const [expanded,setExpanded]=useState<string[]>([]);const [,tick]=useState(0)
+ const [showStreetNames,setShowStreetNames]=useState(true)
  const [sliderMinute,setSliderMinute]=useState<number|null>(null)
  const [compareMode,setCompareMode]=useState(false)
  const [contextLocation,setContextLocation]=useState<ContextLocation|null>(null)
  const [tripStart,setTripStart]=useState<City|null>(null);const [tripEnd,setTripEnd]=useState<City|null>(null)
  const [favoriteIds,setFavoriteIds]=useState<string[]>(()=>{try{return JSON.parse(localStorage.getItem('meridian-favorites')||'[]') as string[]}catch{return []}})
  const [customFavorites,setCustomFavorites]=useState<City[]>(()=>{try{return JSON.parse(localStorage.getItem('meridian-custom-favorites')||'[]') as City[]}catch{return []}});const [savedMeta,setSavedMeta]=useState<SavedMetaMap>(()=>readSavedMeta());const [editingSaved,setEditingSaved]=useState<City|null>(null);const [aliasDraft,setAliasDraft]=useState('');const [tagsDraft,setTagsDraft]=useState('');const [locationPromptDismissed,setLocationPromptDismissed]=useState(false)
+ const [transferMessage,setTransferMessage]=useState('');const [importing,setImporting]=useState(false)
+ const downloadFavorites=()=>{
+  const all=[...favoriteIds.map(id=>cityByKey.get(id)).filter((city):city is City=>!!city),...customFavorites]
+  const unique=[...new Map(all.map(city=>[cityKey(city),city])).values()]
+  const url=URL.createObjectURL(new Blob([exportFavorites(unique.map(city=>({city,meta:savedMeta[cityKey(city)]})))],{type:'application/yaml'}))
+  const link=document.createElement('a');link.href=url;link.download='meridian-favourites.yaml';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)
+  setTransferMessage(`Exported ${unique.length} favourites.`)
+ }
+ const uploadFavorites=async(file:File)=>{
+  setImporting(true);setTransferMessage('')
+  try{
+   if(file.size>5*1024*1024)throw new Error('Please choose a YAML file smaller than 5 MB.')
+   const entries=importFavorites(await file.text())
+   setFavoriteIds(ids=>[...new Set([...ids,...entries.filter(entry=>cityByKey.has(cityKey(entry.city))).map(entry=>cityKey(entry.city))])])
+   setCustomFavorites(items=>[...new Map([...items,...entries.filter(entry=>!cityByKey.has(cityKey(entry.city))).map(entry=>entry.city)].map(city=>[cityKey(city),city])).values()])
+   setSavedMeta(current=>{const next={...current};entries.forEach(({city,meta})=>{if(meta)next[cityKey(city)]=meta});return next})
+   setTransferMessage(`Imported ${entries.length} favourites; existing favourites kept.`)
+  }catch(error){setTransferMessage(error instanceof Error?error.message:'Could not import favourites.')}
+  finally{setImporting(false)}
+ }
  const detectUserLocation=useCallback(()=>{if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(position=>setDetectedLocation(cityAtCoordinates(position.coords.latitude,position.coords.longitude,'Current location')),()=>undefined,{enableHighAccuracy:false,timeout:8000,maximumAge:300000})},[])
  useEffect(()=>{const id=setInterval(()=>tick(v=>v+1),30000);return()=>clearInterval(id)},[])
  useEffect(()=>{localStorage.setItem('meridian-favorites',JSON.stringify(favoriteIds))},[favoriteIds])
@@ -100,6 +122,7 @@ export default function App(){
       {open&&visibleMatches.map(c=><button key={`${c.name}-${c.lat}-${c.lng}`} className={`city-row ${selected.name===c.name?'selected':''}`} onClick={()=>choose(c)}><span className="city-dot"/><div><b>{c.name}</b><small>{cityDate(c)}</small></div><time>{cityTime(c)}</time><span className="offset">{utcOffset(c)}</span></button>)}
       {open&&matches.length>visibleMatches.length&&<div className="more-cities">Showing {visibleMatches.length} of {matches.length.toLocaleString()} cities · Search to narrow</div>}
      </div>}) : tab==='favorites' ? <div className="favorites-list">
+      <div className="favorite-transfer"><button type="button" onClick={downloadFavorites}>Export YAML</button><label aria-disabled={importing}>{importing?'Importing…':'Import YAML'}<input type="file" accept=".yaml,.yml,application/yaml,text/yaml" aria-label="Import favourites from YAML" disabled={importing} onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)void uploadFavorites(file)}}/></label><p>Import merges favourites, including aliases and tags.</p>{transferMessage&&<p role="status">{transferMessage}</p>}</div>
       {favoriteCities.length===0?<div className="empty-favorites"><Star/><b>{normalizedQuery?'No favourites found':'No favourite places yet'}</b><span>{normalizedQuery?'Try another search':'Select a location, then tap the star to save it here.'}</span></div>:favoriteCities.map(c=>{const meta=savedMeta[cityKey(c)];return <div className={`favorite-row ${cityKey(selected)===cityKey(c)?'selected':''}`} key={cityKey(c)}><button onClick={()=>choose(c)}><span>{flag(c.code)}</span><div><b>{displayName(c)}</b><small>{displayAddress(c)}</small>{meta?.tags.length>0&&<span className="tag-pills">{meta.tags.map(tag=><i key={tag}>{tag}</i>)}</span>}</div><time>{cityTime(c)}</time></button><button className="edit-saved" aria-label={`Edit ${displayName(c)}`} onClick={()=>beginSavedEdit(c)}><Pencil/></button><button aria-label={`Remove ${displayName(c)} from favourites`} onClick={()=>toggleFavorite(c)}><Star className="filled"/></button></div>})}
      </div> : zoneGroups.map(zone=><button className={`zone-row ${utcOffset(selected)===zone.offset?'selected':''}`} key={zone.offset} onClick={()=>{setSelected(zone.representative);setShowZones(true)}}><Clock3/><div><span>{zone.offset}</span><small>{zone.namedZones} named zone{zone.namedZones===1?'':'s'}</small></div><time>{cityTime(zone.representative)}</time><b>{zone.cities.length.toLocaleString()}</b></button>)}
    </div>
@@ -107,7 +130,7 @@ export default function App(){
   </aside>
 
   <section className="world street-active">
-   <WorldMap selected={selected} compare={compare} tripStart={tripStart} tripEnd={tripEnd} viewMode={viewMode} showCities={showCities} showZones={showZones} brightness={brightness} onSelect={choose} onContextLocation={onContextLocation} onZoom={onZoom}/>
+   <WorldMap selected={selected} compare={compare} tripStart={tripStart} tripEnd={tripEnd} viewMode={viewMode} showStreetNames={showStreetNames} showCities={showCities} showZones={showZones} brightness={brightness} onSelect={choose} onContextLocation={onContextLocation} onZoom={onZoom}/>
    <div className="time-slider" onDoubleClick={()=>setSliderMinute(null)} title="Double-click to reset to your current local time">
     <div className="time-slider-head"><div><Clock3/><span>{homeLabel.toUpperCase()}</span><b>{minuteLabel(chosenHomeMinute)}</b>{sliderMinute===null&&<em>LIVE</em>}</div><div className="matching-time"><span>{displayName(selected).toUpperCase()}</span><strong>{selectedSliderTime}</strong><small>{selectedSliderDate}</small></div></div>
     <div className="time-slider-track"><span>12 AM</span><input aria-label={`${homeLabel} time`} type="range" min="0" max="1439" step="1" value={chosenHomeMinute} onChange={event=>setSliderMinute(Number(event.target.value))}/><span>11:59 PM</span></div>
@@ -115,6 +138,7 @@ export default function App(){
    </div>
    <div className="atmosphere-label"><b>{viewMode==='satellite'?'SATELLITE IMAGERY':viewMode==='map'?'TOPOGRAPHIC MAP':'OPENSTREETMAP · STREET DETAIL'}</b> <span>•</span> TIME ZONES LIVE</div>
    <button className={`home-map-control ${home?'ready':''}`} title={home?`Go to home: ${displayName(home)}`:'Set detected location as home'} onClick={()=>{if(home)setSelected(home);else if(detectedLocation){setHome(detectedLocation);setSelected(detectedLocation)}else detectUserLocation()}}><House/><span>HOME</span></button>
+   <button type="button" className={`street-names-control ${showStreetNames?'active':''}`} aria-pressed={showStreetNames} aria-label="Show street names" title={`${showStreetNames?'Hide':'Show'} street names and map labels`} onClick={()=>setShowStreetNames(value=>!value)}><MapIcon size={16}/><span>Street names</span><b>{showStreetNames?'ON':'OFF'}</b></button>
    {!home&&detectedLocation&&!locationPromptDismissed&&<div className="home-prompt"><House/><div><b>Set your home location?</b><small>{detectedLocation.name}, {detectedLocation.country}</small></div><button onClick={()=>{setHome(detectedLocation);setSelected(detectedLocation)}}>SET HOME</button><button aria-label="Dismiss home suggestion" onClick={()=>setLocationPromptDismissed(true)}><X/></button></div>}
    <div className="detail-card">
     <div className="card-pin">{flag(selected.code)}</div>{savedLocationKeys.has(cityKey(selected))&&<button className="edit-location-toggle" aria-label="Edit alias and tags" title="Edit alias and tags" onClick={event=>{event.stopPropagation();beginSavedEdit(selected)}}><Pencil/></button>}<button className={`home-toggle ${home&&cityKey(home)===cityKey(selected)?'active':''}`} aria-label="Set selected location as home" title="Set as home" onClick={event=>{event.stopPropagation();setHome(selected)}}><House/></button><button className={`favorite-toggle ${isFavorite(selected)?'active':''}`} aria-label={isFavorite(selected)?'Remove from favourites':'Add to favourites'} onClick={event=>{event.stopPropagation();toggleFavorite(selected)}}><Star/></button><button className="close-card"><X/></button>

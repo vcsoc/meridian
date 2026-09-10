@@ -21,7 +21,8 @@
     "three": "latest",
     "tz-lookup": "^6.1.25",
     "vite": "latest",
-    "world-cities-json": "^1.0.1"
+    "world-cities-json": "^1.0.1",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@eslint/js": "latest",
